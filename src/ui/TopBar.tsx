@@ -8,13 +8,13 @@ import { L } from '@/engine/i18n'
 import { getState, redo, replaceScene, setLang, setState, toast, undo, useStore } from '@/engine/store'
 import { buildTimeline, sceneEnd } from '@/engine/timeline'
 import type { Scene } from '@/engine/types'
+import { deleteProject, listProjects, loadProject, saveProjectData } from '@/engine/storage'
 import { Icon, Num, Seg, Toggle } from './widgets'
 
 const safeName = (n: string) => n.replace(/[^\p{L}\p{N}_\- ]+/gu, '').trim().slice(0, 60) || 'scene'
 
 async function saveProject(name: string) {
-  const r = await fetch(`/api/projects/${encodeURIComponent(name)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(getState().scene) })
-  if (!r.ok) throw new Error((await r.json()).error ?? L('บันทึกไม่สำเร็จ', 'Save failed'))
+  await saveProjectData(name, getState().scene)
   setState({ projectName: name, dirty: false })
 }
 
@@ -115,11 +115,11 @@ function ResetModal({ onClose }: { onClose: () => void }) {
 
 function OpenModal({ onClose }: { onClose: () => void }) {
   const [list, setList] = useState<{ name: string; at: number }[] | null>(null)
-  const load = () => fetch('/api/projects').then(r => r.json()).then(d => setList(d.projects ?? [])).catch(() => setList([]))
+  const load = () => listProjects().then(setList).catch(() => setList([]))
   useEffect(() => { load() }, [])
   const open = async (name: string) => {
-    const d = await fetch(`/api/projects/${encodeURIComponent(name)}`).then(r => r.json())
-    if (d.project) { replaceScene(d.project, name); toast(L(`เปิด “${name}”`, `Opened “${name}”`), 'ok'); onClose() }
+    const project = await loadProject(name)
+    if (project) { replaceScene(project as Scene, name); toast(L(`เปิด “${name}”`, `Opened “${name}”`), 'ok'); onClose() }
   }
   return (
     <Modal title={L('เปิดโปรเจค', 'Open project')} onClose={onClose}>
@@ -129,7 +129,7 @@ function OpenModal({ onClose }: { onClose: () => void }) {
         {list?.map(p => (
           <div key={p.name} className="proj-item">
             <button className="proj-open" onClick={() => open(p.name)}><Icon name="film" /> <b>{p.name}</b><span>{new Date(p.at).toLocaleString(getState().lang === 'en' ? 'en-GB' : 'th-TH')}</span></button>
-            <button className="ibtn danger" title={L('ลบ', 'Delete')} onClick={async () => { if (confirm(L(`ลบโปรเจค “${p.name}”?`, `Delete project “${p.name}”?`))) { await fetch(`/api/projects/${encodeURIComponent(p.name)}`, { method: 'DELETE' }); load() } }}><Icon name="trash" /></button>
+            <button className="ibtn danger" title={L('ลบ', 'Delete')} onClick={async () => { if (confirm(L(`ลบโปรเจค “${p.name}”?`, `Delete project “${p.name}”?`))) { await deleteProject(p.name); load() } }}><Icon name="trash" /></button>
           </div>
         ))}
       </div>

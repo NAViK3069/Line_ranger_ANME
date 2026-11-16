@@ -10,6 +10,7 @@ import {
   type SpriteMap,
 } from '@/lib/animation/samRenderer'
 import type { AssetDef, SamSetUrls, Vec } from './types'
+import { fetchBlob, resolveUrl, saveUpload, type UploadItem } from './storage'
 
 export interface GameDataLite {
   sc: Vec | null
@@ -96,9 +97,9 @@ export function readyLength(set: SamSet, clips: string[]): number {
 export const ROAD_RATIO = 0.778
 
 // ── fetch helpers ──
-const ok = (r: Response, what: string) => { if (!r.ok) throw new Error(`${what} (${r.status})`); return r }
-const getBuf = (u: string) => fetch(u).then(r => ok(r, u.split('/').pop() ?? u).arrayBuffer())
-const getBlob = (u: string) => fetch(u).then(r => ok(r, u.split('/').pop() ?? u).blob())
+// ผ่าน storage → รองรับทั้ง URL ปกติ และไฟล์ที่เก็บในเบราว์เซอร์ (local:…) · หน้า HTML ที่ตอบกลับมาแทนไฟล์ถือว่าพัง
+const getBlob = (u: string) => fetchBlob(u)
+const getBuf = (u: string) => fetchBlob(u).then(b => b.arrayBuffer())
 
 export async function loadSamSet(urls: SamSetUrls): Promise<SamSet> {
   const [samBuf, plistBuf, png] = await Promise.all([getBuf(urls.sam), getBuf(urls.plist), getBlob(urls.png)])
@@ -184,7 +185,8 @@ export async function loadImageRuntime(url: string): Promise<ImageRuntime> {
   return { kind: 'image', w: bmp.width, h: bmp.height, frames: null, total: 0, still: bmp }
 }
 
-function loadVideoMeta(url: string): Promise<VideoRuntime> {
+async function loadVideoMeta(ref: string): Promise<VideoRuntime> {
+  const url = await resolveUrl(ref)
   return new Promise((resolve, reject) => {
     const v = document.createElement('video')
     v.preload = 'metadata'; v.muted = true; v.src = url
@@ -201,6 +203,7 @@ export function fetchRangerListing(id: string): Promise<RangerListing> {
   id = id.trim().toLowerCase()
   if (!listingCache.has(id)) {
     const p = fetch(`/api/ranger/${encodeURIComponent(id)}`).then(async r => {
+      if (!(r.headers.get('content-type') ?? '').includes('json')) throw new Error('ไม่พบหลังบ้าน /api — ต้องรันด้วย npm run dev / npm start หรือ deploy พร้อม Netlify Functions')
       const d = await r.json()
       if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`)
       const res = (f: string) => `/api/res/${encodeURIComponent(id)}/${encodeURIComponent(f)}`
@@ -412,14 +415,9 @@ class AssetStore {
 export const assets = new AssetStore()
 
 // ── อัปโหลด ──
-export interface UploadResult { file: string; name: string; url: string; size: number; mime: string }
-export async function uploadFile(f: File | Blob, name?: string): Promise<UploadResult> {
-  const n = name ?? (f instanceof File ? f.name : 'file')
-  const r = await fetch(`/api/upload?name=${encodeURIComponent(n)}`, { method: 'POST', body: f })
-  const d = await r.json()
-  if (!r.ok) throw new Error(d.error ?? 'อัปโหลดไม่สำเร็จ')
-  return d
-}
+export type UploadResult = UploadItem
+/** อัปโหลด: ดิสก์ของเครื่อง (dev/start) หรือ IndexedDB ของเบราว์เซอร์ (เว็บออนไลน์) — ดู storage.ts */
+export const uploadFile = (f: File | Blob, name?: string): Promise<UploadResult> => saveUpload(f, name)
 
 export const isAudioName = (n: string) => /\.(mp3|ogg|oga|wav|m4a|aac|flac|opus)$/i.test(n)
 export const isVideoName = (n: string) => /\.(mp4|webm|mov|m4v|ogv)$/i.test(n)

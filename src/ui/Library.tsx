@@ -7,6 +7,7 @@ import {
   addLericoRanger, addMediaActor, addSoundCue, addUploadedRanger, loadNames, uploadAudio, uploadMedia, uploadSequence, type RangerName,
 } from '@/engine/actions'
 import { previewSound } from '@/engine/audio'
+import { importFromUrl, listUploads, recentRangers, type UploadItem } from '@/engine/storage'
 import { L } from '@/engine/i18n'
 import { assets, fetchRangerListing, isAudioName, isVideoName, thumbUrl } from '@/engine/assets'
 import { uid } from '@/engine/scene'
@@ -37,6 +38,16 @@ export function Library() {
 }
 
 // ── เรนเจอร์ ──
+/** "โหลดแล้ว" = แคชบนดิสก์ (ตอนรันในเครื่อง) + ประวัติในเบราว์เซอร์ (ตอนออนไลน์) */
+async function loadRecent(): Promise<RangerName[]> {
+  const disk: RangerName[] = await fetch('/api/library').then(r => r.json()).then(d => d.rangers ?? []).catch(() => [])
+  const names = await loadNames().catch(() => [] as RangerName[])
+  const byId = new Map(names.map(n => [n.id, n]))
+  const seen = new Set(disk.map(d => d.id))
+  const local = recentRangers().filter(id => !seen.has(id)).map(id => byId.get(id) ?? { id, en: null, th: null })
+  return [...local, ...disk]
+}
+
 const ID_LIKE = /^u\d+[a-z]*-[a-z0-9_-]+$/i
 
 function RangersTab() {
@@ -50,7 +61,7 @@ function RangersTab() {
 
   useEffect(() => {
     loadNames().then(setNames).catch(() => setNamesErr(true))
-    fetch('/api/library').then(r => r.json()).then(d => setRecent(d.rangers ?? [])).catch(() => {})
+    loadRecent().then(setRecent)
   }, [])
 
   const results = useMemo(() => {
@@ -69,7 +80,7 @@ function RangersTab() {
     const f = form === 'e-body' && listing?.sets['e-body'] ? 'e-body' : 'body'
     if (form === 'e-body' && listing && !listing.sets['e-body']) toast(L('ตัวนี้ไม่มีร่าง e-body ใช้ร่างปกติแทน', 'No e-body form — using the base form'))
     await addLericoRanger(id, { tag, form: f })
-    fetch('/api/library').then(r => r.json()).then(d => setRecent(d.rangers ?? [])).catch(() => {})
+    loadRecent().then(setRecent)
   }
 
   const direct = ID_LIKE.test(q.trim())
@@ -119,7 +130,6 @@ function RangerGrid({ items, onPick }: { items: RangerName[]; onPick: (id: strin
 }
 
 // ── สื่อ ──
-interface UploadItem { file: string; name: string; url: string; size: number; mime: string }
 
 function MediaTab() {
   const [items, setItems] = useState<UploadItem[]>([])
@@ -130,8 +140,7 @@ function MediaTab() {
   const sceneAssets = useStore(s => s.scene.assets)
   const [sounds, setSounds] = useState<UploadItem[]>([])
   const [playingUrl, setPlayingUrl] = useState<string | null>(null)
-  const refresh = () => fetch('/api/uploads').then(r => r.json()).then(d => {
-    const all: UploadItem[] = d.files ?? []
+  const refresh = () => listUploads().then(all => {
     setItems(all.filter(f => /^(image|video)\//.test(f.mime)))
     setSounds(all.filter(f => /^audio\//.test(f.mime)))
   }).catch(() => {})
@@ -149,9 +158,7 @@ function MediaTab() {
     if (!/^https?:\/\//i.test(u)) { toast(L('ใส่ URL ที่ขึ้นต้นด้วย http(s)://', 'Enter a URL starting with http(s)://'), 'error'); return }
     setState({ busy: L('กำลังดาวน์โหลด…', 'Downloading…') })
     try {
-      const res = await fetch('/api/import-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: u }) })
-      const r = await res.json()
-      if (!res.ok) throw new Error(r.error ?? L('ดาวน์โหลดไม่ได้', 'Download failed'))
+      const r = await importFromUrl(u)
       addMediaActor(r.url, r.name, { mime: r.mime })
       setUrl(''); refresh()
     } catch (e) {
@@ -185,7 +192,7 @@ function MediaTab() {
         {items.map(it => (
           <div key={it.file} className="media-card" title={it.name}>
             <button className="media-thumb" onClick={() => addMediaActor(it.url, it.name, { mime: it.mime })}>
-              {isVideoName(it.name) || it.mime.startsWith('video/') ? <video src={it.url + '#t=0.1'} muted preload="metadata" /> : <img src={it.url} alt="" loading="lazy" />}
+              {isVideoName(it.name) || it.mime.startsWith('video/') ? <video src={it.src + '#t=0.1'} muted preload="metadata" /> : <img src={it.src} alt="" loading="lazy" />}
               {it.mime.startsWith('video/') && <span className="badge">VIDEO</span>}
               {/gif|webp|apng/.test(it.mime) && <span className="badge">{it.mime.split('/')[1].toUpperCase()}</span>}
             </button>

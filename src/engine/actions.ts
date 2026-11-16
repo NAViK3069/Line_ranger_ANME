@@ -3,6 +3,7 @@
 // ====================================================
 import { assets, fetchRangerListing, isAudioName, isVideoName, uploadFile, type MovePart, type RangerRuntime } from './assets'
 import { L, getLang } from './i18n'
+import { rememberRanger } from './storage'
 import { GAME_SPEED_TO_PXS } from './timeline'
 import {
   ART_FACES_LEFT, clamp, defaultFx, emptyScene, newSoundCue, defaultBackground, newActor, newAnimCue, newCameraCue, newMoveCue, newShowCue, newSkillCue, uid,
@@ -64,6 +65,7 @@ export async function addLericoRanger(rangerId: string, opts: { form?: string; t
       actorId = a.id
     })
     select({ kind: 'actor', id: actorId })
+    rememberRanger(rangerId)
     toast(L(`เพิ่ม ${name} แล้ว`, `Added ${name}`), 'ok')
     return actorId
   } catch (e) {

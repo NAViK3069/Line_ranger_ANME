@@ -40,6 +40,19 @@ src/ui/               TopBar · Library · StageView · Inspector · Timeline ·
 
 ไฟล์ที่โหลดจาก lerico ถูกเก็บถาวรใน `storage/cache/res/` — ครั้งต่อไปเปิดได้ทันทีแม้ออฟไลน์
 
+## Deploy บน Netlify
+
+เชื่อม repo นี้กับ Netlify ได้เลย — `netlify.toml` ตั้งค่าไว้แล้ว (build `npm run build` · publish `dist` · ฟังก์ชัน `netlify/functions/api.mjs` รับ `/api/*`)
+
+| ส่วน | รันในเครื่อง (`npm run dev` / `npm start`) | Netlify |
+|---|---|---|
+| เรนเจอร์ / ฉากด่าน / รายชื่อ (lerico) | proxy + แคชลง `storage/cache` | Netlify Function + แคชที่ CDN |
+| ไฟล์อัปโหลด (ภาพ วิดีโอ เสียง SAM) | `storage/uploads` | IndexedDB ในเบราว์เซอร์ (ไม่จำกัดขนาด) |
+| โปรเจคที่บันทึก | `storage/projects` | IndexedDB ในเบราว์เซอร์ |
+
+บน Netlify ไฟล์อัปโหลดและโปรเจคอยู่ในเบราว์เซอร์เครื่องนั้น — ไฟล์ JSON ที่ส่งออกไปเปิดเครื่องอื่นจะเห็นเฉพาะเรนเจอร์จาก lerico (ไฟล์อัปโหลดต้องอัปใหม่)
+ทดสอบโหมดเบราว์เซอร์บนเครื่องตัวเองได้ด้วย `http://localhost:5300/?storage=browser`
+
 ## คีย์ลัด
 
 `Space` เล่น/หยุด · `Ctrl+Z / Y` ย้อน/ทำซ้ำ · `Ctrl+S` บันทึก · `Del` ลบ · `Ctrl+D` ทำซ้ำ · `←→↑↓` เลื่อนตัวละคร (Shift ×10) · `, .` ทีละเฟรม · `Home` กลับต้น

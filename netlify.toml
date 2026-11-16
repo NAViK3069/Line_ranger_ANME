@@ -1,0 +1,14 @@
+# Netlify: เว็บนิ่งจาก dist/ + ฟังก์ชัน /api/* (proxy lerico) — ไฟล์อัปโหลด/โปรเจคเก็บในเบราว์เซอร์ (IndexedDB)
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# ทุกเส้นทางที่ไม่ใช่ไฟล์จริง → index.html (แอพหน้าเดียว) · /api/* ถูกฟังก์ชันจับไปก่อนแล้ว
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

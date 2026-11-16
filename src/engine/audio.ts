@@ -2,6 +2,7 @@
 // audio.ts — เล่นเสียงตามไทม์ไลน์ (Web Audio ตรงเวลาระดับมิลลิวินาที) + มิกซ์เสียงออฟไลน์ตอนส่งออกวิดีโอ
 // ====================================================
 import { assets, audioCtx } from './assets'
+import { resolveUrl } from './storage'
 import type { AppState } from './store'
 import type { SoundEvent, Timeline } from './timeline'
 
@@ -94,8 +95,9 @@ export function previewSound(url: string | null): boolean {
   previewEl?.pause()
   previewEl = null
   if (!url || same) return false
-  previewEl = new Audio(url)
-  previewEl.dataset.url = url
-  previewEl.play().catch(() => {})
+  const el = new Audio()
+  el.dataset.url = url
+  previewEl = el
+  resolveUrl(url).then(u => { el.src = u; return el.play() }).catch(() => {})
   return true
 }

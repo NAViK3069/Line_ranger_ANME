@@ -199,7 +199,7 @@ export function createApi({ root }) {
       }
       if (seg[0] !== 'api') return next?.()
 
-      if (req.method === 'GET' && seg[1] === 'health') return send(res, 200, { ok: true })
+      if (req.method === 'GET' && seg[1] === 'health') return send(res, 200, { ok: true, storage: 'disk' })
 
       if (req.method === 'GET' && seg[1] === 'names') {
         return send(res, 200, { rangers: await loadNames() })
