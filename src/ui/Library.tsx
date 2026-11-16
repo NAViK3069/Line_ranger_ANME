@@ -7,7 +7,7 @@ import {
   addLericoRanger, addMediaActor, addSoundCue, addUploadedRanger, loadNames, uploadAudio, uploadMedia, uploadSequence, type RangerName,
 } from '@/engine/actions'
 import { previewSound } from '@/engine/audio'
-import { importFromUrl, listUploads, recentRangers, type UploadItem } from '@/engine/storage'
+import { api, appUrl, importFromUrl, listUploads, recentRangers, type UploadItem } from '@/engine/storage'
 import { L } from '@/engine/i18n'
 import { assets, fetchRangerListing, isAudioName, isVideoName, thumbUrl } from '@/engine/assets'
 import { uid } from '@/engine/scene'
@@ -40,7 +40,7 @@ export function Library() {
 // ── เรนเจอร์ ──
 /** "โหลดแล้ว" = แคชบนดิสก์ (ตอนรันในเครื่อง) + ประวัติในเบราว์เซอร์ (ตอนออนไลน์) */
 async function loadRecent(): Promise<RangerName[]> {
-  const disk: RangerName[] = await fetch('/api/library').then(r => r.json()).then(d => d.rangers ?? []).catch(() => [])
+  const disk: RangerName[] = await fetch(api('/api/library')).then(r => r.json()).then(d => d.rangers ?? []).catch(() => [])
   const names = await loadNames().catch(() => [] as RangerName[])
   const byId = new Map(names.map(n => [n.id, n]))
   const seen = new Set(disk.map(d => d.id))
@@ -264,7 +264,7 @@ function MapsTab() {
       <div className="map-grid">
         {presetMaps().map(m => (
           <button key={m.url} className={'map-card' + (bg.kind === 'asset' && bgAsset && 'url' in bgAsset && bgAsset.url === m.url ? ' on' : '')} onClick={() => setPreset(m.url, m.name)}>
-            <img src={m.url} alt="" loading="lazy" /><span>{m.name}</span>
+            <img src={appUrl(m.url)} alt="" loading="lazy" /><span>{m.name}</span>
           </button>
         ))}
         <button className="map-card upload" onClick={() => fileRef.current?.click()}><Icon name="upload" size={22} /><span>{L('อัปโหลดภาพ/วิดีโอ', 'Upload image/video')}</span></button>
@@ -274,7 +274,7 @@ function MapsTab() {
       <div className="map-grid">
         {BATTLE_STAGES.map(s => (
           <button key={s} className={'map-card' + (bg.kind === 'stage' && bg.stage === s ? ' on' : '')} onClick={() => setStage(s)}>
-            <img src={`/api/res/${s}/bg.png`} alt="" loading="lazy" onError={e => { (e.target as HTMLImageElement).style.opacity = '0.15' }} />
+            <img src={appUrl(`/api/res/${s}/bg.png`)} alt="" loading="lazy" onError={e => { (e.target as HTMLImageElement).style.opacity = '0.15' }} />
             <span>{s.replace('battle', L('ด่าน ', 'Stage '))}</span>
           </button>
         ))}

@@ -32,8 +32,10 @@ const DAY = {
   'Netlify-CDN-Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800, durable',
 }
 
+/** ให้เว็บโดเมนอื่น (เช่น GitHub Pages) เรียกใช้ได้ */
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS' }
 const json = (data, status = 200, headers = {}) =>
-  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } })
+  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS, ...headers } })
 
 async function listDir(dir) {
   const r = await fetch(`${ORIGIN}/res/${dir}/`, { headers: { ...UA, Accept: 'text/html' } })
@@ -73,6 +75,7 @@ async function names() {
 export default async (req) => {
   const url = new URL(req.url)
   const seg = url.pathname.split('/').filter(Boolean).map(s => decodeURIComponent(s))
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
   if (seg[0] !== 'api') return json({ error: 'not found' }, 404)
   try {
     if (seg[1] === 'health') return json({ ok: true, storage: 'browser' })
@@ -100,7 +103,7 @@ export default async (req) => {
       const r = await fetch(`${ORIGIN}/res/${parts.join('/')}`, { headers: UA })
       if (!r.ok) return json({ error: `lerico ${r.status}` }, r.status === 404 ? 404 : 502)
       const ext = parts.at(-1).split('.').pop().toLowerCase()
-      return new Response(await r.arrayBuffer(), { status: 200, headers: { 'Content-Type': MIME[ext] ?? 'application/octet-stream', ...FOREVER } })
+      return new Response(await r.arrayBuffer(), { status: 200, headers: { 'Content-Type': MIME[ext] ?? 'application/octet-stream', ...CORS, ...FOREVER } })
     }
 
     if (seg[1] === 'fetch') {
@@ -112,7 +115,7 @@ export default async (req) => {
       if (!/^(image|video|audio)\//.test(type)) return json({ error: `ไม่ใช่ไฟล์สื่อ (${type || 'ไม่ทราบชนิด'})` }, 415)
       const buf = await r.arrayBuffer()
       if (buf.byteLength > 5.5 * 1024 * 1024) return json({ error: 'ไฟล์ใหญ่เกิน 5.5MB — ดาวน์โหลดลงเครื่องแล้วอัปโหลดแทน' }, 413)
-      return new Response(buf, { status: 200, headers: { 'Content-Type': type } })
+      return new Response(buf, { status: 200, headers: { 'Content-Type': type, ...CORS } })
     }
 
     if (seg[1] === 'upload' || seg[1] === 'uploads' || seg[1] === 'projects' || seg[1] === 'import-url') {

@@ -19,6 +19,8 @@ function studioApi(): Plugin {
 }
 
 export default defineConfig({
+  // GitHub Pages อยู่ใต้ /<repo>/ → build ด้วย VITE_BASE=./ (ดู .github/workflows/pages.yml)
+  base: process.env.VITE_BASE || '/',
   plugins: [react(), studioApi()],
   resolve: { alias: { '@': path.join(ROOT, 'src') } },
   // รวม React ไว้ตั้งแต่แรก → เปิดหน้าครั้งแรกไม่เจอ "Invalid hook call" จาก Vite optimize ซ้ำกลางทาง

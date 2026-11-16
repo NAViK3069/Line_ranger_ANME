@@ -10,7 +10,8 @@ import {
   type SpriteMap,
 } from '@/lib/animation/samRenderer'
 import type { AssetDef, SamSetUrls, Vec } from './types'
-import { fetchBlob, resolveUrl, saveUpload, type UploadItem } from './storage'
+import { L } from './i18n'
+import { api, appUrl, fetchBlob, resolveUrl, saveUpload, type UploadItem } from './storage'
 
 export interface GameDataLite {
   sc: Vec | null
@@ -202,8 +203,8 @@ const listingCache = new Map<string, Promise<RangerListing>>()
 export function fetchRangerListing(id: string): Promise<RangerListing> {
   id = id.trim().toLowerCase()
   if (!listingCache.has(id)) {
-    const p = fetch(`/api/ranger/${encodeURIComponent(id)}`).then(async r => {
-      if (!(r.headers.get('content-type') ?? '').includes('json')) throw new Error('ไม่พบหลังบ้าน /api — ต้องรันด้วย npm run dev / npm start หรือ deploy พร้อม Netlify Functions')
+    const p = fetch(api(`/api/ranger/${encodeURIComponent(id)}`)).then(async r => {
+      if (!(r.headers.get('content-type') ?? '').includes('json')) throw new Error(L('ไม่พบหลังบ้าน /api — รันด้วย npm run dev / npm start, deploy บน Netlify หรือตั้ง API_BASE ให้ GitHub Pages', 'No /api backend — run npm run dev / npm start, deploy on Netlify, or set API_BASE for GitHub Pages'))
       const d = await r.json()
       if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`)
       const res = (f: string) => `/api/res/${encodeURIComponent(id)}/${encodeURIComponent(f)}`
@@ -221,7 +222,7 @@ export function fetchRangerListing(id: string): Promise<RangerListing> {
   return listingCache.get(id)!
 }
 
-export const thumbUrl = (id: string) => `/api/res/${encodeURIComponent(id)}/${encodeURIComponent(id)}-thum.png`
+export const thumbUrl = (id: string) => appUrl(`/api/res/${encodeURIComponent(id)}/${encodeURIComponent(id)}-thum.png`)
 
 /** ชุดกระสุนของร่างนี้ → ชื่อเรียกสั้น (e-bul2 → bul2) */
 function bulletSetsFor(form: string, sets: Record<string, SamSetUrls>): Record<string, SamSetUrls> {
@@ -243,7 +244,8 @@ async function composeStage(stage: string): Promise<StageRuntime> {
   const load = (f: string) => new Promise<HTMLImageElement | null>(res => {
     const img = new Image()
     img.onload = () => res(img); img.onerror = () => res(null)
-    img.src = `/api/res/${encodeURIComponent(stage)}/${f}`
+    img.crossOrigin = 'anonymous'
+    img.src = appUrl(`/api/res/${encodeURIComponent(stage)}/${f}`)
   })
   const bg = await load('bg.png')
   if (!bg) throw new Error(`โหลดฉาก ${stage} ไม่ได้`)

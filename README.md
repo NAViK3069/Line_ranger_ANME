@@ -1,5 +1,7 @@
 # ANME · Line Rangers Animation Studio
 
+🌐 **เปิดใช้งานออนไลน์: [navik3069.github.io/Line_ranger_ANME](https://navik3069.github.io/Line_ranger_ANME/)**
+
 เว็บแอพจัดฉากและเล่นอนิเมชั่นเรนเจอร์ Line Rangers — รวมระบบจาก **LineRanger_TurnBased** (ตัวอ่าน/เรนเดอร์ SAM, หลังบ้านโหลดเรนเจอร์ด้วย ID) และ **Line_ranger_wabsite_kiwi** (proxy lerico, ฉากด่าน battleXX, รายชื่อเรนเจอร์ ไทย/อังกฤษ, mp4-muxer)
 
 ## เริ่มใช้งาน
@@ -52,6 +54,15 @@ src/ui/               TopBar · Library · StageView · Inspector · Timeline ·
 
 บน Netlify ไฟล์อัปโหลดและโปรเจคอยู่ในเบราว์เซอร์เครื่องนั้น — ไฟล์ JSON ที่ส่งออกไปเปิดเครื่องอื่นจะเห็นเฉพาะเรนเจอร์จาก lerico (ไฟล์อัปโหลดต้องอัปใหม่)
 ทดสอบโหมดเบราว์เซอร์บนเครื่องตัวเองได้ด้วย `http://localhost:5300/?storage=browser`
+
+## Deploy บน GitHub Pages
+
+`.github/workflows/pages.yml` build แล้ว deploy ให้อัตโนมัติทุกครั้งที่ push เข้า `main`
+
+1. **Settings → Pages → Source** เลือก **GitHub Actions** (ถ้าเลือก “Deploy from a branch” หน้าเว็บจะว่าง เพราะได้ไฟล์ต้นฉบับที่ยังไม่ build)
+2. GitHub Pages เป็นเว็บนิ่ง ไม่มีหลังบ้าน — การโหลดเรนเจอร์/ฉากด่าน/รายชื่อจาก lerico ต้องยืมฟังก์ชันของเว็บ Netlify:
+   **Settings → Secrets and variables → Actions → Variables → New variable** ชื่อ `API_BASE` ค่า `https://<ชื่อเว็บ>.netlify.app` แล้วสั่ง workflow ใหม่ (Actions → Deploy to GitHub Pages → Run workflow)
+3. ไฟล์อัปโหลดและโปรเจคเก็บในเบราว์เซอร์ (IndexedDB) เหมือนบน Netlify
 
 ## คีย์ลัด
 

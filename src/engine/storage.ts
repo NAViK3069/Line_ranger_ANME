@@ -10,6 +10,20 @@
 
 export type StorageMode = 'disk' | 'browser'
 
+// ── ที่อยู่หลังบ้าน ──
+// ปกติ /api อยู่โดเมนเดียวกับหน้าเว็บ · GitHub Pages ไม่มีหลังบ้าน → ตั้ง VITE_API_BASE ตอน build
+// ให้ชี้ไปที่เว็บ Netlify ที่มีฟังก์ชัน (เช่น https://xxx.netlify.app)
+export const API_BASE = ((import.meta.env.VITE_API_BASE as string | undefined) ?? '').replace(/\/+$/, '')
+export const api = (path: string) => API_BASE + path
+
+/** แปลง path ภายในแอพเป็น URL จริง: /api/… → หลังบ้าน · /maps/… → ตาม base ของเว็บ (รองรับเว็บที่อยู่ใต้โฟลเดอร์) */
+export function appUrl(url: string): string {
+  if (url.startsWith('/api/')) return API_BASE + url
+  if (url.startsWith('/files/')) return url
+  if (url.startsWith('/') && !url.startsWith('//')) return import.meta.env.BASE_URL + url.slice(1)
+  return url
+}
+
 export interface UploadItem {
   file: string
   name: string
@@ -37,7 +51,7 @@ export function storageMode(): Promise<StorageMode> {
     // ?storage=browser บังคับโหมดเบราว์เซอร์ (ไว้ทดสอบแบบเว็บออนไลน์บนเครื่องตัวเอง)
     const forced = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('storage') : null
     if (forced === 'browser' || forced === 'disk') return (modePromise = Promise.resolve(forced))
-    modePromise = fetch('/api/health')
+    modePromise = fetch(api('/api/health'))
       .then(r => (r.ok && r.headers.get('content-type')?.includes('json') ? r.json() : null))
       .then(d => (d?.ok && d.storage !== 'browser' ? 'disk' : 'browser') as StorageMode)
       .catch(() => 'browser' as StorageMode)
@@ -87,7 +101,7 @@ const keyOf = (url: string) => url.slice('local:'.length).split('/')[0]
 export const isLocalUrl = (url: string) => url.startsWith('local:')
 
 export async function resolveUrl(url: string): Promise<string> {
-  if (!isLocalUrl(url)) return url
+  if (!isLocalUrl(url)) return appUrl(url)
   const key = keyOf(url)
   const hit = objectUrls.get(key)
   if (hit) return hit
@@ -105,7 +119,7 @@ export async function fetchBlob(url: string): Promise<Blob> {
     if (!rec) throw new Error(`ไม่พบไฟล์ในเบราว์เซอร์นี้ (${decodeURIComponent(url.split('/').pop() ?? '')})`)
     return rec.blob
   }
-  const r = await fetch(url)
+  const r = await fetch(appUrl(url))
   if (!r.ok || (r.headers.get('content-type') ?? '').startsWith('text/html')) {
     throw new Error(`${decodeURIComponent(url.split('/').pop() ?? url)} (${r.ok ? 'ไม่ใช่ไฟล์' : r.status})`)
   }
@@ -116,7 +130,7 @@ export async function fetchBlob(url: string): Promise<Blob> {
 export async function saveUpload(f: File | Blob, name?: string): Promise<UploadItem> {
   const n = safeName(name ?? (f instanceof File ? f.name : 'file'))
   if ((await storageMode()) === 'disk') {
-    const r = await fetch(`/api/upload?name=${encodeURIComponent(n)}`, { method: 'POST', body: f })
+    const r = await fetch(api(`/api/upload?name=${encodeURIComponent(n)}`), { method: 'POST', body: f })
     const d = await r.json()
     if (!r.ok) throw new Error(d.error ?? 'อัปโหลดไม่สำเร็จ')
     return { ...d, src: d.url, at: Date.now() }
@@ -131,7 +145,7 @@ export async function saveUpload(f: File | Blob, name?: string): Promise<UploadI
 
 export async function listUploads(): Promise<UploadItem[]> {
   if ((await storageMode()) === 'disk') {
-    const d = await fetch('/api/uploads').then(r => r.json())
+    const d = await fetch(api('/api/uploads')).then(r => r.json())
     return (d.files ?? []).map((x: UploadItem) => ({ ...x, src: x.url }))
   }
   const all = await tx<FileRec[]>('files', 'readonly', s => s.getAll())
@@ -147,12 +161,12 @@ export async function listUploads(): Promise<UploadItem[]> {
 /** ดึงสื่อจากลิงก์ภายนอกแล้วเก็บเหมือนไฟล์อัปโหลด */
 export async function importFromUrl(src: string): Promise<UploadItem> {
   if ((await storageMode()) === 'disk') {
-    const r = await fetch('/api/import-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: src }) })
+    const r = await fetch(api('/api/import-url'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: src }) })
     const d = await r.json()
     if (!r.ok) throw new Error(d.error ?? 'ดาวน์โหลดไม่ได้')
     return { ...d, src: d.url, at: Date.now() }
   }
-  const r = await fetch(`/api/fetch?url=${encodeURIComponent(src)}`)
+  const r = await fetch(api(`/api/fetch?url=${encodeURIComponent(src)}`))
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `ดาวน์โหลดไม่ได้ (${r.status})`)
   const blob = await r.blob()
   let name = decodeURIComponent(new URL(src).pathname.split('/').pop() || 'media')
@@ -164,19 +178,19 @@ export async function importFromUrl(src: string): Promise<UploadItem> {
 export interface ProjectInfo { name: string; at: number }
 
 export async function listProjects(): Promise<ProjectInfo[]> {
-  if ((await storageMode()) === 'disk') return (await fetch('/api/projects').then(r => r.json())).projects ?? []
+  if ((await storageMode()) === 'disk') return (await fetch(api('/api/projects')).then(r => r.json())).projects ?? []
   const all = await tx<ProjectRec[]>('projects', 'readonly', s => s.getAll())
   return all.map(p => ({ name: p.name, at: p.at })).sort((a, b) => b.at - a.at)
 }
 
 export async function loadProject(name: string): Promise<unknown | null> {
-  if ((await storageMode()) === 'disk') return (await fetch(`/api/projects/${encodeURIComponent(name)}`).then(r => r.json())).project ?? null
+  if ((await storageMode()) === 'disk') return (await fetch(api(`/api/projects/${encodeURIComponent(name)}`)).then(r => r.json())).project ?? null
   return (await tx<ProjectRec | undefined>('projects', 'readonly', s => s.get(name)))?.scene ?? null
 }
 
 export async function saveProjectData(name: string, scene: unknown): Promise<void> {
   if ((await storageMode()) === 'disk') {
-    const r = await fetch(`/api/projects/${encodeURIComponent(name)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(scene) })
+    const r = await fetch(api(`/api/projects/${encodeURIComponent(name)}`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(scene) })
     if (!r.ok) throw new Error((await r.json()).error ?? 'บันทึกไม่สำเร็จ')
     return
   }
@@ -184,7 +198,7 @@ export async function saveProjectData(name: string, scene: unknown): Promise<voi
 }
 
 export async function deleteProject(name: string): Promise<void> {
-  if ((await storageMode()) === 'disk') { await fetch(`/api/projects/${encodeURIComponent(name)}`, { method: 'DELETE' }); return }
+  if ((await storageMode()) === 'disk') { await fetch(api(`/api/projects/${encodeURIComponent(name)}`), { method: 'DELETE' }); return }
   await tx('projects', 'readwrite', s => s.delete(name))
 }
 

@@ -3,7 +3,7 @@
 // ====================================================
 import { assets, fetchRangerListing, isAudioName, isVideoName, uploadFile, type MovePart, type RangerRuntime } from './assets'
 import { L, getLang } from './i18n'
-import { rememberRanger } from './storage'
+import { api, rememberRanger } from './storage'
 import { GAME_SPEED_TO_PXS } from './timeline'
 import {
   ART_FACES_LEFT, clamp, defaultFx, emptyScene, newSoundCue, defaultBackground, newActor, newAnimCue, newCameraCue, newMoveCue, newShowCue, newSkillCue, uid,
@@ -18,7 +18,7 @@ export interface RangerName { id: string; en: string | null; th: string | null }
 let namesPromise: Promise<RangerName[]> | null = null
 export function loadNames(): Promise<RangerName[]> {
   if (!namesPromise) {
-    namesPromise = fetch('/api/names').then(r => r.json()).then(d => d.rangers ?? [])
+    namesPromise = fetch(api('/api/names')).then(r => r.json()).then(d => d.rangers ?? [])
     namesPromise.catch(() => { namesPromise = null })
   }
   return namesPromise

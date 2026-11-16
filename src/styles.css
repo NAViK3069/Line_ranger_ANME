@@ -1,4 +1,4 @@
-@font-face { font-family: 'LineBold'; src: url('/linebold.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'LineBold'; src: url('../public/linebold.ttf') format('truetype'); font-display: swap; }
 
 :root {
   --bg0: #05070f;
