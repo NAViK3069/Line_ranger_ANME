@@ -1,0 +1,5 @@
+node_modules
+dist
+# ข้อมูลในเครื่อง (แคช lerico / ไฟล์อัปโหลด / โปรเจคที่บันทึก)
+storage/
+*.tsbuildinfo
