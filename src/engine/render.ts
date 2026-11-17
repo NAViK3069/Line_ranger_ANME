@@ -7,7 +7,7 @@ import type { SamFrame } from '@/lib/animation/samParser'
 import { assets, type RangerRuntime } from './assets'
 import {
   BANNER_TIME, HIT_FLASH, actorPos, activePose, arcHeight, arcPos, buildTimeline, cameraAt, fxFinishPoint, fxImpactPoint,
-  fxLaunchPoint, poseFrames, rangerOfActor, visibility, type Timeline,
+  fxLaunchPoint, poseFrames, visibility, type Timeline,
 } from './timeline'
 import { clamp } from './scene'
 import type { Actor, Scene, Vec } from './types'
@@ -202,18 +202,6 @@ export function actorFrameParts(scene: Scene, tl: Timeline, a: Actor, rt: Ranger
   return [...by].map(([name, count]) => ({ name, count })).reverse()
 }
 
-function drawShadow(ctx: CanvasRenderingContext2D, scene: Scene, a: Actor, rt: RangerRuntime, t: number, alpha: number) {
-  const p = actorPos(scene, a, t)
-  const w = Math.max(30, (rt.box.x1 - rt.box.x0) * 0.42) * a.scale
-  ctx.save()
-  ctx.globalAlpha = 0.32 * alpha * a.opacity
-  const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, w)
-  g.addColorStop(0, 'rgba(0,0,0,0.9)'); g.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = g
-  ctx.beginPath(); ctx.ellipse(p.x, p.y, w, w * 0.28, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.restore()
-}
-
 function drawMedia(ctx: CanvasRenderingContext2D, a: Actor, t: number, localStart: number, alpha: number, opts: RenderOptions) {
   const src = mediaSource(a.assetId, 'actor:' + a.id, t - localStart, opts.playing, a.loop, a.speed, opts.forceMute || a.muted)
   if (!src) return
@@ -379,12 +367,6 @@ export function renderScene(ctx: CanvasRenderingContext2D, scene: Scene, t: numb
     slots.forEach((slot, k) => { order[slot] = sorted[k] })
   }
 
-  // เงาก่อน (ไม่ทับตัวอื่น)
-  for (const a of order) {
-    const rt = rangerOfActor(scene, a)
-    const vis = visibility(scene, a, t)
-    if (rt && a.shadow && vis) drawShadow(ctx, scene, a, rt, t, vis.alpha)
-  }
   for (const a of order) {
     const vis = visibility(scene, a, t)
     if (!vis || vis.alpha <= 0) continue

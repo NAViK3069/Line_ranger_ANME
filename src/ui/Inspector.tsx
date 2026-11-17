@@ -132,7 +132,6 @@ function ActorInspector({ a }: { a: Actor }) {
           <button className={'btn' + (a.locked ? ' on' : '')} onClick={() => set({ locked: !a.locked })}><Icon name={a.locked ? 'lock' : 'unlock'} /> {L('ล็อก', 'Lock')}</button>
         </Row>
         <Select label={L('โหมดผสมสี', 'Blend mode')} value={a.blend} options={blends()} onChange={v => set({ blend: v })} />
-        {isRanger && <Toggle label={L('เงาใต้เท้า', 'Foot shadow')} value={a.shadow} onChange={v => set({ shadow: v })} />}
         {isRanger && <button className="btn ghost small" onClick={() => set({ y: groundY })}>{L('วางบนเส้นพื้น', 'Snap to ground')}</button>}
       </Section>
       {ranger && <PartsPanel a={a} rt={ranger} />}

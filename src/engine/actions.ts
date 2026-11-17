@@ -129,7 +129,7 @@ export function addMediaActor(url: string, name: string, opts: { asBackground?: 
       s.background = { ...s.background, kind: 'asset', assetId: def.id, fit: 'cover', scale: 1, offsetX: 0, offsetY: 0 }
       return
     }
-    const a = newActor(def, { x: s.width / 2, y: s.height / 2 }, { tag: 'prop', shadow: false })
+    const a = newActor(def, { x: s.width / 2, y: s.height / 2 }, { tag: 'prop' })
     s.actors.push(a)
     id = a.id
   })
@@ -183,7 +183,7 @@ export async function uploadSequence(files: File[], fps: number) {
     updateScene(s => {
       const def: AssetDef = { id: uid('q'), type: 'sequence', name, urls, fps }
       s.assets.push(def)
-      const a = newActor(def, { x: s.width / 2, y: s.height / 2 }, { tag: 'prop', shadow: false })
+      const a = newActor(def, { x: s.width / 2, y: s.height / 2 }, { tag: 'prop' })
       s.actors.push(a); id = a.id
     })
     select({ kind: 'actor', id })

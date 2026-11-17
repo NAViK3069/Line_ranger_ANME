@@ -51,7 +51,7 @@ export function newActor(asset: AssetDef, at: Vec, extra: Partial<Actor> = {}): 
     id: uid('a'), name: asset.name, assetId: asset.id, tag: isRanger ? 'ally' : 'prop',
     x: Math.round(at.x), y: Math.round(at.y), scale: 1, flip: false, rotation: 0, opacity: 1,
     blend: 'source-over', visible: true, locked: false,
-    idleClip: 'idle', shadow: isRanger, hiddenParts: [], loop: true, muted: true, speed: 1,
+    idleClip: 'idle', hiddenParts: [], loop: true, muted: true, speed: 1,
     ...extra,
   }
 }
@@ -114,7 +114,12 @@ export function normalizeScene(raw: Partial<Scene>): Scene {
   const base = emptyScene(raw.name)
   const s: Scene = { ...base, ...raw, background: { ...base.background, ...(raw.background ?? {}) } } as Scene
   s.assets = raw.assets ?? []
-  s.actors = (raw.actors ?? []).map(a => ({ ...newActor({ id: a.assetId, type: 'image', name: a.name, url: '' }, a), ...a }))
+  s.actors = (raw.actors ?? []).map(a => {
+    const k = { ...newActor({ id: a.assetId, type: 'image', name: a.name, url: '' }, a), ...a }
+    // เงาที่แอพเคยวาดเพิ่ม — เลิกใช้ (ภาพเรนเจอร์มีเงาของตัวเองอยู่แล้ว)
+    delete (k as Record<string, unknown>).shadow
+    return k
+  })
   s.cues = (raw.cues ?? []).map(c => {
     if (c.type !== 'skill') return c
     const k = { ...newSkillCue(c.actorId, c.start), ...c, approach: { ...defaultApproach(), ...(c.approach ?? {}) }, fx: c.fx ? { ...defaultFx(c.fx.set), ...c.fx } : null }
