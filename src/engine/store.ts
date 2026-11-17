@@ -29,6 +29,8 @@ export interface AppState {
   dirty: boolean
   toasts: Toast[]
   busy: string | null
+  /** ชิ้นส่วนที่เมาส์ชี้อยู่ในแผงเลเยอร์ → วาดกรอบแดงบนเวที (ไม่บันทึกลงฉาก) */
+  hoverPart: { actorId: string; name: string } | null
   lang: 'th' | 'en'
   /** ปิดเสียงทั้งหมด (เสียงประกอบ + เสียงวิดีโอ) */
   muted: boolean
@@ -52,6 +54,7 @@ let state: AppState = {
   guides: true, projectName: null, dirty: false, toasts: [], busy: null,
   lang: getLang(),
   muted: ls('anme.muted') === '1',
+  hoverPart: null,
   volume: Math.min(1, Math.max(0, parseFloat(ls('anme.volume') ?? '0.9') || 0.9)),
 }
 

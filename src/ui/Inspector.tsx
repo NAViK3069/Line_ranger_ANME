@@ -16,6 +16,7 @@ import { select, setState, setTime, toast, updateScene, useStore } from '@/engin
 import { GAME_SPEED_TO_PXS } from '@/engine/timeline'
 import type { Actor, AnimCue, Blend, CameraCue, Cue, Ease, FxMode, MoveCue, ShowCue, SkillCue, SoundCue } from '@/engine/types'
 import { BackgroundInspector } from './Library'
+import { PartsPanel } from './PartsPanel'
 import { timelineOf, useAssetsVersion } from './StageView'
 import { Icon, Num, Row, Section, Seg, Select, Slider, Text, Toggle } from './widgets'
 
@@ -134,6 +135,7 @@ function ActorInspector({ a }: { a: Actor }) {
         {isRanger && <Toggle label={L('เงาใต้เท้า', 'Foot shadow')} value={a.shadow} onChange={v => set({ shadow: v })} />}
         {isRanger && <button className="btn ghost small" onClick={() => set({ y: groundY })}>{L('วางบนเส้นพื้น', 'Snap to ground')}</button>}
       </Section>
+      {ranger && <PartsPanel a={a} rt={ranger} />}
       {ranger && <RangerClips a={a} rt={ranger} />}
       {!isRanger && (
         <Section title={L('การเล่นสื่อ', 'Media playback')}>

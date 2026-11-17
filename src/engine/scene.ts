@@ -51,7 +51,7 @@ export function newActor(asset: AssetDef, at: Vec, extra: Partial<Actor> = {}): 
     id: uid('a'), name: asset.name, assetId: asset.id, tag: isRanger ? 'ally' : 'prop',
     x: Math.round(at.x), y: Math.round(at.y), scale: 1, flip: false, rotation: 0, opacity: 1,
     blend: 'source-over', visible: true, locked: false,
-    idleClip: 'idle', shadow: isRanger, loop: true, muted: true, speed: 1,
+    idleClip: 'idle', shadow: isRanger, hiddenParts: [], loop: true, muted: true, speed: 1,
     ...extra,
   }
 }

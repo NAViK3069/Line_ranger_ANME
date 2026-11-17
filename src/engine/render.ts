@@ -3,6 +3,7 @@
 // ctx ต้องตั้ง transform ให้ "1 หน่วย = 1 พิกเซลเวที" มาก่อน (ฝั่งผู้เรียกจัดการขนาดจอ/DPR)
 // ====================================================
 import { renderSAMFrame, lerpSAMFrame } from '@/lib/animation/samRenderer'
+import type { SamFrame } from '@/lib/animation/samParser'
 import { assets, type RangerRuntime } from './assets'
 import {
   BANNER_TIME, HIT_FLASH, actorPos, activePose, arcHeight, arcPos, buildTimeline, cameraAt, fxFinishPoint, fxImpactPoint,
@@ -19,6 +20,40 @@ export interface RenderOptions {
   guides?: boolean
   /** ปิดเสียงวิดีโอทั้งหมด (ตอน export / ตอนลาก) */
   forceMute?: boolean
+  /** วาดกรอบแดงรอบชิ้นส่วนนี้ (แผงเลเยอร์) */
+  hoverPart?: { actorId: string; name: string } | null
+}
+
+// Set ของชิ้นที่ซ่อน — แคชตามอาร์เรย์เดิม ไม่สร้างใหม่ทุกเฟรม
+const hiddenCache = new WeakMap<string[], Set<string>>()
+function hiddenSet(list: string[] | undefined): Set<string> | undefined {
+  if (!list?.length) return undefined
+  let s = hiddenCache.get(list)
+  if (!s) { s = new Set(list); hiddenCache.set(list, s) }
+  return s
+}
+
+/** สี่มุมของชิ้นส่วน (คำนวณแบบเดียวกับ renderSAMFrame) — ใช้วาดกรอบชิ้นที่ชี้อยู่ */
+function pieceQuads(frame: SamFrame, rt: RangerRuntime, name: string, ox: number, oy: number, z: number, flip: boolean, pivot: number): Vec[][] {
+  const out: Vec[][] = []
+  for (const [, res, m, color] of frame) {
+    if (color[3] === 0 || res >= rt.sam.images.length) continue
+    const img = rt.sam.images[res]
+    if (img.name !== name) continue
+    const spr = rt.sprites[img.name]
+    if (!spr) continue
+    const [m00, m01, m10, m11, m02, m12] = m
+    const [i00, i01, i10, i11, i02, i12] = img.m
+    const cx = spr.w / 2, cy = spr.h / 2
+    const pCx = i00 * cx + i01 * cy + i02, pCy = i10 * cx + i11 * cy + i12
+    const wCx = m00 * pCx + m01 * pCy + m02, wCy = m10 * pCx + m11 * pCy + m12
+    const f00 = m00 * i00 + m01 * i10, f01 = m00 * i01 + m01 * i11, f10 = m10 * i00 + m11 * i10, f11 = m10 * i01 + m11 * i11
+    out.push([[-cx, -cy], [cx, -cy], [cx, cy], [-cx, cy]].map(([sx, sy]) => {
+      const wx = wCx + f00 * sx + f01 * sy, wy = wCy + f10 * sx + f11 * sy
+      return { x: ox + (flip ? 2 * pivot - wx : wx) * z, y: oy + wy * z }
+    }))
+  }
+  return out
 }
 
 const usedVideos = new Set<string>()
@@ -118,7 +153,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, scene: Scene, t: number, 
 }
 
 // ── ตัวละคร ──
-function drawRanger(ctx: CanvasRenderingContext2D, scene: Scene, tl: Timeline, a: Actor, rt: RangerRuntime, t: number, alpha: number) {
+function drawRanger(ctx: CanvasRenderingContext2D, scene: Scene, tl: Timeline, a: Actor, rt: RangerRuntime, t: number, alpha: number, hover?: RenderOptions['hoverPart']) {
   const pose = activePose(scene, tl, a, rt, t)
   const [fa, fb, frac] = poseFrames(rt, pose)
   if (!fa) return
@@ -128,7 +163,8 @@ function drawRanger(ctx: CanvasRenderingContext2D, scene: Scene, tl: Timeline, a
   const ox = p.x - rt.stand.x * z, oy = p.y - rt.stand.y * z
   ctx.save()
   ctx.globalCompositeOperation = a.blend
-  renderSAMFrame(ctx, frame, rt.sam.images, rt.sprites, ox, oy, z, undefined, a.flip, rt.stand.x, 0, alpha * a.opacity)
+  const hidden = hiddenSet(a.hiddenParts)
+  renderSAMFrame(ctx, frame, rt.sam.images, rt.sprites, ox, oy, z, hidden, a.flip, rt.stand.x, 0, alpha * a.opacity)
   // แฟลชตอนโดน
   let flash = 0
   for (const h of tl.hits) {
@@ -138,9 +174,32 @@ function drawRanger(ctx: CanvasRenderingContext2D, scene: Scene, tl: Timeline, a
   }
   if (flash > 0) {
     ctx.globalCompositeOperation = 'lighter'
-    renderSAMFrame(ctx, frame, rt.sam.images, rt.sprites, ox, oy, z, undefined, a.flip, rt.stand.x, 0, flash * 0.85 * alpha)
+    renderSAMFrame(ctx, frame, rt.sam.images, rt.sprites, ox, oy, z, hidden, a.flip, rt.stand.x, 0, flash * 0.85 * alpha)
   }
   ctx.restore()
+  // กรอบแดงรอบชิ้นที่ชี้อยู่ในแผงเลเยอร์
+  if (hover && hover.actorId === a.id) {
+    ctx.save()
+    ctx.strokeStyle = '#ff3b5c'; ctx.lineWidth = 2; ctx.setLineDash([5, 3])
+    ctx.shadowColor = 'rgba(255,40,80,0.9)'; ctx.shadowBlur = 6
+    for (const q of pieceQuads(frame, rt, hover.name, ox, oy, z, a.flip, rt.stand.x)) {
+      ctx.beginPath(); q.forEach((v, i) => (i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y))); ctx.closePath(); ctx.stroke()
+    }
+    ctx.restore()
+  }
+}
+
+/** ชิ้นส่วนในเฟรมที่ actor แสดงอยู่ ณ เวลา t (เรียงบน→ล่าง) — ใช้ในแผงเลเยอร์ */
+export function actorFrameParts(scene: Scene, tl: Timeline, a: Actor, rt: RangerRuntime, t: number): { name: string; count: number }[] {
+  const [fa] = poseFrames(rt, activePose(scene, tl, a, rt, t))
+  if (!fa) return []
+  const by = new Map<string, number>()
+  for (const [, res, , color] of fa) {
+    if (color[3] === 0 || res >= rt.sam.images.length) continue
+    const n = rt.sam.images[res].name
+    by.set(n, (by.get(n) ?? 0) + 1)
+  }
+  return [...by].map(([name, count]) => ({ name, count })).reverse()
 }
 
 function drawShadow(ctx: CanvasRenderingContext2D, scene: Scene, a: Actor, rt: RangerRuntime, t: number, alpha: number) {
@@ -331,7 +390,7 @@ export function renderScene(ctx: CanvasRenderingContext2D, scene: Scene, t: numb
     if (!vis || vis.alpha <= 0) continue
     const rt = assets.get(a.assetId)
     if (!rt) { drawPlaceholder(ctx, scene, a, t); continue }
-    if (rt.kind === 'ranger') drawRanger(ctx, scene, tl, a, rt, t, vis.alpha)
+    if (rt.kind === 'ranger') drawRanger(ctx, scene, tl, a, rt, t, vis.alpha, opts.hoverPart)
     else drawMedia(ctx, a, t, vis.localStart, vis.alpha, opts)
   }
   drawSkillFx(ctx, scene, tl, t)

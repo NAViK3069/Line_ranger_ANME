@@ -45,6 +45,8 @@ export interface Actor {
   // ── ranger ──
   idleClip: string
   shadow: boolean
+  /** ชิ้นส่วนที่ซ่อน (ชื่อสไปรต์ในไฟล์ .sam) — แบบแผงเลเยอร์ของ Kiwi · มีผลกับภาพส่งออกด้วย */
+  hiddenParts: string[]
   // ── media ──
   loop: boolean
   muted: boolean

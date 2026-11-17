@@ -67,7 +67,7 @@ export function StageView() {
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.clearRect(0, 0, cv.width, cv.height)
       ctx.setTransform(kk, 0, 0, kk, 0, 0)
-      renderScene(ctx, sc, st.time, { playing: st.playing, timeline: timelineOf(sc), guides: st.guides && !st.playing, forceMute: st.muted })
+      renderScene(ctx, sc, st.time, { playing: st.playing, timeline: timelineOf(sc), guides: st.guides && !st.playing, forceMute: st.muted, hoverPart: st.playing ? null : st.hoverPart })
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
